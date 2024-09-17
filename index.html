@@ -84,118 +84,129 @@
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.0/dist/peerjs.min.js"></script>
 
 <script>
-    const usernameInput = document.getElementById("username");
-    const peerIdInput = document.getElementById("peerId");
-    const createPeerButton = document.getElementById("createPeer");
-    const connectPeerButton = document.getElementById("connectPeer");
-    const messageInput = document.getElementById("message");
-    const sendButton = document.getElementById("send");
-    const fileInput = document.getElementById("fileInput");
-    const messagesDiv = document.getElementById("messages");
+    document.addEventListener('DOMContentLoaded', function() {
+        const usernameInput = document.getElementById("username");
+        const peerIdInput = document.getElementById("peerId");
+        const createPeerButton = document.getElementById("createPeer");
+        const connectPeerButton = document.getElementById("connectPeer");
+        const messageInput = document.getElementById("message");
+        const sendButton = document.getElementById("send");
+        const fileInput = document.getElementById("fileInput");
+        const messagesDiv = document.getElementById("messages");
 
-    const MAX_FILE_SIZE_MB = 5; // 5 MB max file size
-    const BAD_WORDS = ["badword1", "badword2"]; // Add actual curse words here
-    let conn;
-    let peer;
+        const MAX_FILE_SIZE_MB = 5; // 5 MB max file size
+        const BAD_WORDS = ["badword1", "badword2"]; // Add actual curse words here
+        let conn;
+        let peer;
 
-    // Function to display messages
-    function addMessage(sender, message) {
-        const messageDiv = document.createElement("div");
-        messageDiv.textContent = `${sender}: ${message}`;
-        messagesDiv.appendChild(messageDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the bottom
-    }
-
-    // Function to enable chat once connected
-    function enableChat() {
-        messageInput.disabled = false;
-        sendButton.disabled = false;
-        fileInput.disabled = false;
-    }
-
-    // Filter out bad words
-    function filterBadWords(message) {
-        let filteredMessage = message;
-        BAD_WORDS.forEach(badWord => {
-            const regex = new RegExp(badWord, 'gi');
-            filteredMessage = filteredMessage.replace(regex, '****');
-        });
-        return filteredMessage;
-    }
-
-    // Handle peer connection
-    function connectToPeer(peerID) {
-        conn = peer.connect(peerID);
-        conn.on('open', () => {
-            enableChat();
-            addMessage("System", "Connected to peer.");
-        });
-
-        conn.on('data', (data) => {
-            if (data.type === 'message') {
-                addMessage(data.username, filterBadWords(data.text));
-            } else if (data.type === 'file') {
-                receiveFile(data.file, data.filename);
-            }
-        });
-    }
-
-    // Create Peer
-    createPeerButton.onclick = () => {
-        peer = new Peer(null, {
-            host: '0.peerjs.com',  // PeerJS cloud server
-            port: 443,
-            secure: true
-        });
-
-        peer.on('open', (id) => {
-            addMessage("System", `Your Peer ID is: ${id}`);
-            peerIdInput.value = id;
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            addMessage("Error", "Failed to create Peer ID.");
-        });
-    };
-
-    // Connect to an existing peer
-    connectPeerButton.onclick = () => {
-        const peerID = peerIdInput.value.trim();
-        if (peerID) {
-            connectToPeer(peerID);
-        } else {
-            addMessage("Error", "Please enter a valid Peer ID.");
-        }
-    };
-
-    // Send message or file
-    sendButton.onclick = () => {
-        const username = usernameInput.value || "Anonymous";
-        const message = messageInput.value;
-
-        if (message) {
-            const filteredMessage = filterBadWords(message);
-            conn.send({ type: 'message', username, text: filteredMessage });
-            addMessage("You", filteredMessage);
-            messageInput.value = ""; // Clear message input
+        // Function to display messages
+        function addMessage(sender, message) {
+            const messageDiv = document.createElement("div");
+            messageDiv.textContent = `${sender}: ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the bottom
         }
 
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            if (file.size <= MAX_FILE_SIZE_MB * 1024 * 1024) {
-                const reader = new FileReader();
-                reader.onload = function (event) {
-                    conn.send({ type: 'file', file: event.target.result, filename: file.name });
-                    addMessage("You", `Sent file: ${file.name}`);
-                };
-                reader.readAsDataURL(file);
+        // Function to enable chat once connected
+        function enableChat() {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            fileInput.disabled = false;
+        }
+
+        // Filter out bad words
+        function filterBadWords(message) {
+            let filteredMessage = message;
+            BAD_WORDS.forEach(badWord => {
+                const regex = new RegExp(badWord, 'gi');
+                filteredMessage = filteredMessage.replace(regex, '****');
+            });
+            return filteredMessage;
+        }
+
+        // Handle peer connection
+        function connectToPeer(peerID) {
+            conn = peer.connect(peerID);
+            conn.on('open', () => {
+                enableChat();
+                addMessage("System", "Connected to peer.");
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'message') {
+                    addMessage(data.username, filterBadWords(data.text));
+                } else if (data.type === 'file') {
+                    receiveFile(data.file, data.filename);
+                }
+            });
+        }
+
+        // Create Peer
+        createPeerButton.onclick = () => {
+            peer = new Peer(null, {
+                host: '0.peerjs.com',  // PeerJS cloud server
+                port: 443,
+                secure: true
+            });
+
+            peer.on('open', (id) => {
+                addMessage("System", `Your Peer ID is: ${id}`);
+                peerIdInput.value = id;
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                addMessage("Error", "Failed to create Peer ID.");
+            });
+        };
+
+        // Connect to an existing peer
+        connectPeerButton.onclick = () => {
+            const peerID = peerIdInput.value.trim();
+            if (peerID) {
+                connectToPeer(peerID);
             } else {
-                alert("File is too big! Max size is 5MB.");
+                addMessage("Error", "Please enter a valid Peer ID.");
             }
-            fileInput.value = ""; // Clear file input
+        };
+
+        // Send message or file
+        sendButton.onclick = () => {
+            const username = usernameInput.value || "Anonymous";
+            const message = messageInput.value;
+
+            if (message) {
+                const filteredMessage = filterBadWords(message);
+                conn.send({ type: 'message', username, text: filteredMessage });
+                addMessage("You", filteredMessage);
+                messageInput.value = ""; // Clear message input
+            }
+
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                if (file.size <= MAX_FILE_SIZE_MB * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        conn.send({ type: 'file', file: event.target.result, filename: file.name });
+                        addMessage("You", `Sent file: ${file.name}`);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert("File is too big! Max size is 5MB.");
+                }
+                fileInput.value = ""; // Clear file input
+            }
+        };
+
+        function receiveFile(fileData, filename) {
+            const link = document.createElement("a");
+            link.href = fileData;
+            link.download = filename;
+            link.textContent = `Download file: ${filename}`;
+            messagesDiv.appendChild(link);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-    };
+    });
 </script>
 
 </body>
