@@ -69,7 +69,9 @@
     </div>
 </div>
 
+<!-- PeerJS Library -->
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.0/dist/peerjs.min.js"></script>
+
 <script>
     const peerIdInput = document.getElementById("peerId");
     const connectButton = document.getElementById("connect");
@@ -131,7 +133,7 @@
 
     // Handle peer creation and connection
     connectButton.onclick = () => {
-        peer = new Peer();
+        peer = new Peer(); // Create a new peer instance
 
         // If no peer ID entered, create a new one
         peer.on('open', (id) => {
