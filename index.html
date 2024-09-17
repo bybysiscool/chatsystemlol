@@ -143,6 +143,12 @@
 
         // Create Peer
         createPeerButton.onclick = () => {
+            // Check if Peer class is available
+            if (typeof Peer === 'undefined') {
+                console.error("PeerJS library is not loaded.");
+                return;
+            }
+
             peer = new Peer(null, {
                 host: '0.peerjs.com',  // PeerJS cloud server
                 port: 443,
