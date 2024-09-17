@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Chat System</title>
+    <title>P2P Chat with PeerJS</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,12 +36,13 @@
         }
         #message-input {
             display: flex;
+            flex-direction: column;
+            padding: 10px;
         }
         #message-input input {
-            flex: 1;
             padding: 10px;
-            border: none;
-            border-top: 1px solid #ddd;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
         }
         #message-input button {
             padding: 10px;
@@ -60,69 +61,107 @@
 <div id="chat-container">
     <div id="messages"></div>
     <div id="message-input">
+        <input type="text" id="username" placeholder="Enter your name..." />
         <input type="text" id="message" placeholder="Type your message..." />
+        <input type="file" id="fileInput" />
         <button id="send">Send</button>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.0/dist/peerjs.min.js"></script>
 <script>
+    const peer = new Peer();
+    let conn;
+
     const messagesDiv = document.getElementById("messages");
     const messageInput = document.getElementById("message");
+    const usernameInput = document.getElementById("username");
     const sendButton = document.getElementById("send");
+    const fileInput = document.getElementById("fileInput");
 
-    // Setup WebRTC (DataChannel) objects
-    let localConnection = new RTCPeerConnection();
-    let remoteConnection = new RTCPeerConnection();
-    let sendChannel = localConnection.createDataChannel("sendChannel");
+    const MAX_FILE_SIZE_MB = 5; // 5 MB max file size
+    const CURSE_WORDS = ["badword1", "badword2"]; // Add more as needed
 
-    // Add message to chat window
-    function addMessage(message, sender) {
+    peer.on('open', (id) => {
+        alert(`Your peer ID is: ${id}. Share it with your friend.`);
+    });
+
+    // Handle receiving messages and files
+    peer.on('connection', (dataConnection) => {
+        conn = dataConnection;
+        conn.on('data', (data) => {
+            if (data.type === 'message') {
+                addMessage(data.username, data.text);
+            } else if (data.type === 'file') {
+                receiveFile(data.file, data.filename);
+            }
+        });
+    });
+
+    // Add message to chat
+    function addMessage(sender, message) {
         const messageDiv = document.createElement("div");
-        messageDiv.textContent = `${sender}: ${message}`;
+        messageDiv.textContent = `${sender}: ${filterCurseWords(message)}`;
         messagesDiv.appendChild(messageDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to bottom
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
     }
 
-    // Sending a message
+    // Filter out curse words
+    function filterCurseWords(message) {
+        let filteredMessage = message;
+        CURSE_WORDS.forEach(word => {
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            filteredMessage = filteredMessage.replace(regex, '****');
+        });
+        return filteredMessage;
+    }
+
+    // Handle sending messages
     sendButton.onclick = () => {
+        const username = usernameInput.value || "Anonymous";
         const message = messageInput.value;
-        if (message !== "") {
-            sendChannel.send(message);
-            addMessage(message, "You");
-            messageInput.value = ""; // Clear the input field
+
+        if (message) {
+            conn.send({ type: 'message', username, text: message });
+            addMessage("You", message);
+            messageInput.value = ""; // Clear input
+        }
+
+        // Handle sending files
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (file.size <= MAX_FILE_SIZE_MB * 1024 * 1024) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    conn.send({ type: 'file', file: event.target.result, filename: file.name });
+                    addMessage("You", `Sent file: ${file.name}`);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert("File is too big! Max size is 5MB.");
+            }
+            fileInput.value = ""; // Clear file input
         }
     };
 
-    // Receiving a message
-    remoteConnection.ondatachannel = (event) => {
-        const receiveChannel = event.channel;
-        receiveChannel.onmessage = (event) => {
-            addMessage(event.data, "Peer");
-        };
-    };
+    // Receive file
+    function receiveFile(fileData, filename) {
+        const link = document.createElement("a");
+        link.href = fileData;
+        link.download = filename;
+        link.textContent = `Download file: ${filename}`;
+        messagesDiv.appendChild(link);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
+    }
 
-    // ICE candidate handling for both peers
-    localConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            remoteConnection.addIceCandidate(event.candidate);
-        }
-    };
-
-    remoteConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            localConnection.addIceCandidate(event.candidate);
-        }
-    };
-
-    // Set up signaling handshake
-    localConnection.createOffer().then((offer) => {
-        localConnection.setLocalDescription(offer);
-        remoteConnection.setRemoteDescription(offer);
-        return remoteConnection.createAnswer();
-    }).then((answer) => {
-        remoteConnection.setLocalDescription(answer);
-        localConnection.setRemoteDescription(answer);
-    });
+    // Connect to a peer
+    const peerID = prompt("Enter peer ID to connect:");
+    if (peerID) {
+        conn = peer.connect(peerID);
+        conn.on('open', () => {
+            addMessage("System", "Connected to peer.");
+        });
+    }
 </script>
 
 </body>
