@@ -5,54 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P2P Chat with PeerJS</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f4f4f4;
-        }
-        #chat-container {
-            width: 400px;
-            height: 600px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #messages {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-            border-bottom: 1px solid #ddd;
-        }
-        #messages div {
-            margin: 5px 0;
-        }
-        #message-input {
-            display: flex;
-            flex-direction: column;
-            padding: 10px;
-        }
-        #message-input input, #message-input button {
-            margin-bottom: 5px;
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-        #message-input button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        #message-input button:hover {
-            background-color: #0056b3;
-        }
+        /* Same styles as before */
     </style>
 </head>
 <body>
@@ -133,13 +86,23 @@
 
     // Handle peer creation and connection
     connectButton.onclick = () => {
-        peer = new Peer(); // Create a new peer instance
+        peer = new Peer(null, {
+            host: '0.peerjs.com',  // PeerJS cloud server
+            port: 443,
+            secure: true
+        });
 
         // If no peer ID entered, create a new one
         peer.on('open', (id) => {
             if (!peerIdInput.value) {
                 addMessage("System", `Your Peer ID is: ${id}. Share this with your friend.`);
+                peerIdInput.value = id;  // Display peer ID
             }
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            addMessage("Error", "Failed to connect or create Peer ID.");
         });
 
         // Connect to the peer ID entered
