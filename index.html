@@ -143,7 +143,7 @@
 
         // Create Peer
         createPeerButton.onclick = () => {
-            // Check if Peer class is available
+            // Ensure the Peer class is available
             if (typeof Peer === 'undefined') {
                 console.error("PeerJS library is not loaded.");
                 return;
