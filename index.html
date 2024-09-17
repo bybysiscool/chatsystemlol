@@ -39,13 +39,12 @@
             flex-direction: column;
             padding: 10px;
         }
-        #message-input input {
-            padding: 10px;
+        #message-input input, #message-input button {
             margin-bottom: 5px;
+            padding: 10px;
             border: 1px solid #ddd;
         }
         #message-input button {
-            padding: 10px;
             background-color: #007bff;
             color: white;
             border: none;
@@ -61,62 +60,91 @@
 <div id="chat-container">
     <div id="messages"></div>
     <div id="message-input">
-        <input type="text" id="username" placeholder="Enter your name..." />
-        <input type="text" id="message" placeholder="Type your message..." />
-        <input type="file" id="fileInput" />
-        <button id="send">Send</button>
+        <input type="text" id="peerId" placeholder="Enter Peer ID to connect or leave empty to create one..." />
+        <button id="connect">Connect</button>
+        <input type="text" id="username" placeholder="Enter your name..." disabled />
+        <input type="text" id="message" placeholder="Type your message..." disabled />
+        <input type="file" id="fileInput" disabled />
+        <button id="send" disabled>Send</button>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.0/dist/peerjs.min.js"></script>
 <script>
-    const peer = new Peer();
-    let conn;
-
-    const messagesDiv = document.getElementById("messages");
-    const messageInput = document.getElementById("message");
+    const peerIdInput = document.getElementById("peerId");
+    const connectButton = document.getElementById("connect");
     const usernameInput = document.getElementById("username");
+    const messageInput = document.getElementById("message");
     const sendButton = document.getElementById("send");
     const fileInput = document.getElementById("fileInput");
+    const messagesDiv = document.getElementById("messages");
 
     const MAX_FILE_SIZE_MB = 5; // 5 MB max file size
-    const CURSE_WORDS = ["badword1", "badword2"]; // Add more as needed
+    let conn;
+    let peer;
 
-    peer.on('open', (id) => {
-        alert(`Your peer ID is: ${id}. Share it with your friend.`);
-    });
-
-    // Handle receiving messages and files
-    peer.on('connection', (dataConnection) => {
-        conn = dataConnection;
-        conn.on('data', (data) => {
-            if (data.type === 'message') {
-                addMessage(data.username, data.text);
-            } else if (data.type === 'file') {
-                receiveFile(data.file, data.filename);
-            }
-        });
-    });
-
-    // Add message to chat
+    // Function to display messages
     function addMessage(sender, message) {
         const messageDiv = document.createElement("div");
-        messageDiv.textContent = `${sender}: ${filterCurseWords(message)}`;
+        messageDiv.textContent = `${sender}: ${message}`;
         messagesDiv.appendChild(messageDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the bottom
     }
 
-    // Filter out curse words
-    function filterCurseWords(message) {
-        let filteredMessage = message;
-        CURSE_WORDS.forEach(word => {
-            const regex = new RegExp(`\\b${word}\\b`, 'gi');
-            filteredMessage = filteredMessage.replace(regex, '****');
+    // Function to connect to a peer
+    function connectToPeer() {
+        const peerID = peerIdInput.value.trim();
+        if (peerID) {
+            conn = peer.connect(peerID);
+            conn.on('open', () => {
+                enableChat();
+                addMessage("System", "Connected to peer.");
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'message') {
+                    addMessage(data.username, data.text);
+                } else if (data.type === 'file') {
+                    receiveFile(data.file, data.filename);
+                }
+            });
+        }
+    }
+
+    // Handle file reception
+    function receiveFile(fileData, filename) {
+        const link = document.createElement("a");
+        link.href = fileData;
+        link.download = filename;
+        link.textContent = `Download file: ${filename}`;
+        messagesDiv.appendChild(link);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Enable chat inputs after connection
+    function enableChat() {
+        usernameInput.disabled = false;
+        messageInput.disabled = false;
+        fileInput.disabled = false;
+        sendButton.disabled = false;
+    }
+
+    // Handle peer creation and connection
+    connectButton.onclick = () => {
+        peer = new Peer();
+
+        // If no peer ID entered, create a new one
+        peer.on('open', (id) => {
+            if (!peerIdInput.value) {
+                addMessage("System", `Your Peer ID is: ${id}. Share this with your friend.`);
+            }
         });
-        return filteredMessage;
-    }
 
-    // Handle sending messages
+        // Connect to the peer ID entered
+        connectToPeer();
+    };
+
+    // Send message or file
     sendButton.onclick = () => {
         const username = usernameInput.value || "Anonymous";
         const message = messageInput.value;
@@ -124,10 +152,9 @@
         if (message) {
             conn.send({ type: 'message', username, text: message });
             addMessage("You", message);
-            messageInput.value = ""; // Clear input
+            messageInput.value = ""; // Clear message input
         }
 
-        // Handle sending files
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
             if (file.size <= MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -143,25 +170,6 @@
             fileInput.value = ""; // Clear file input
         }
     };
-
-    // Receive file
-    function receiveFile(fileData, filename) {
-        const link = document.createElement("a");
-        link.href = fileData;
-        link.download = filename;
-        link.textContent = `Download file: ${filename}`;
-        messagesDiv.appendChild(link);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
-    }
-
-    // Connect to a peer
-    const peerID = prompt("Enter peer ID to connect:");
-    if (peerID) {
-        conn = peer.connect(peerID);
-        conn.on('open', () => {
-            addMessage("System", "Connected to peer.");
-        });
-    }
 </script>
 
 </body>
